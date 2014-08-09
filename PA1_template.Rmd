@@ -2,19 +2,112 @@
 
 
 ## Loading and preprocessing the data
+```{r, results='hide'}
+if (! exists("DF")){
+    file <- unzip("./activity.zip")
+    DF <- read.csv(file); 
+    file.remove(file)
+    }
 
-
-
+DF <- transform(DF, date = as.Date(date))
+```
 ## What is mean total number of steps taken per day?
 
+On the first step we bild a histogram of the total number of steps taken each day
+```{r nOfstepsPerDay}
+DFstepsBydate <- aggregate(DF$steps, by=list(DF$date), FUN=sum)
+names(DFstepsBydate) <- c("date", "steps")
 
+library(ggplot2)
+g1 <- ggplot(DFstepsBydate, aes(x = date, y = steps)) +
+     geom_bar(stat = "identity")
+print(g1)
+```
+
+Now we can find mean and median of total number of steps taken per day
+```{r}
+TotalStepsPerDayMean <- mean(DFstepsBydate$steps, na.rm=TRUE)
+TotalStepsPerDayMedian <- median(DFstepsBydate$steps, na.rm=TRUE)
+print(TotalStepsPerDayMean)
+print(TotalStepsPerDayMedian)
+```
+The mean and median of the total number of steps taken per day are `r TotalStepsPerDayMean` and `r TotalStepsPerDayMedian` respectivelly.
 
 ## What is the average daily activity pattern?
+```{r}
+library(ggplot2)
+g <- ggplot() + stat_summary(data=DF, aes(interval, steps), fun.y="mean", geom="line")
+print(g)
 
-
+si <- tapply(DF$steps, DF$interval, mean, na.rm=T)
+si[which.max(si)]
+```
+Interval `r names( si[which.max(si)] )` contains the maximum average (across all the days in the dataset) number of steps: `r si[which.max(si)]`.
 
 ## Imputing missing values
+Here is the total number of missing values of each variable
+```{r}
+colSums(is.na(DF))
+```
 
+Only steps values are misiing. In order to fill in the missin values we will use the median of steps in that time interval accross all days in dataset. If we do not want to use impute {Hmisc} function we can perform this the following way:
+```{r}
+DFim <- DF;   
+siMedian <- tapply(DF$steps, DF$interval, median, na.rm=T)
+sdMedian <- tapply(DF$steps, DF$date, median, na.rm=T)
 
+for ( i in 1:length(DF$steps) ){
+    if( is.na(DF[i, "steps"]) ) {
+        intName <- DF[i, "interval"]
+        dateName <- DF[i, "date"]
+        vsi <- siMedian[ names(siMedian)==intName ]
+        vsd <- sdMedian[ names(sdMedian)==dateName ]
+        
+        if( is.na(vsi) ){
+            DFim[i, "steps"] <- vsd;
+        }else if( is.na(vsd) ){
+            DFim[i, "steps"] <- vsi;
+        }else{
+            DFim[i, "steps"] <- (vsd+vsi)/2;
+        }
+    }
+}
+
+colSums(is.na(DFim))
+
+```
+
+```{r}
+```{r nOfstepsPerDayImputed}
+DFsdIm <- aggregate(DFim$steps, by=list(DFim$date), FUN=sum)
+names(DFsdIm) <- c("date", "steps")
+
+library(ggplot2)
+g1 <- ggplot(DFsdIm, aes(x = date, y = steps)) +
+     geom_bar(stat = "identity")
+print(g1)
+```
+
+Now we can find mean and median of total number of steps taken per day
+```{r}
+TotalStepsPerDayMeanIm <- mean(DFsdIm$steps)
+TotalStepsPerDayMedianIm <- median(DFsdIm$steps)
+print(TotalStepsPerDayMeanIm)
+print(TotalStepsPerDayMedianIm)
+```
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+wd <- weekdays(DF$date, abbreviate=TRUE)
+
+DFim$day <- "weekday"
+DFim[wd == "Sun" | wd == "Sat", "day"] <- "weekend"
+DFim <- transform(DFim, day <- as.factor(day))
+
+gDay <- ggplot(DFim) + 
+    stat_summary(aes(interval, steps), fun.y="mean", geom="line") + 
+    facet_grid(day ~ .) 
+print(gDay)
+```
+
