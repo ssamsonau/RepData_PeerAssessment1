@@ -1,6 +1,6 @@
 # Reproducible Research: Peer Assessment 1
 
-In this assignment we perform a brif review of a data set available by this link [Dataset: Activity monitoring data [52K]](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip). The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+In this assignment we perform a brief review of a data set available by this link [Data-set: Activity monitoring data [52K]](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip). The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
 The variables included in this dataset are:
 
@@ -16,9 +16,8 @@ The dataset is stored in a comma-separated-value (CSV) file and there are a tota
 Let us first load the data and convert data variable to an appropriate format.
 ```{r, results='hide'}
 if (! exists("DF")){
-    file <- unzip("./activity.zip")
-    DF <- read.csv(file); 
-    file.remove(file)
+    download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", "./activity.zip", method="wget")
+    DF <- read.csv( unzip("./activity.zip") )
     }
 DF <- transform(DF, date = as.Date(date))
 ```
@@ -36,6 +35,16 @@ library(ggplot2)
 gSD <- ggplot(DF, aes(x = date, y = steps)) + stat_summary(fun.y="sum", geom="bar")
 print(gSD)
 ```
+
+And now let us take a look on the distribution - let us make a histogram
+
+```{r}
+forHist <- aggregate(steps ~ date, FUN=sum, data=DF)
+gH <- ggplot(forHist, aes(x=steps)) + geom_histogram(binwidth=2500)
+print(gH)
+
+```
+
 
 And here we calculate mean and median of total number of steps taken per day
 ```{r}
@@ -59,15 +68,15 @@ si[which.max(si)]
 The maximum of this activity is observed at an interval identified as `r names( si[which.max(si)] )`, with the maximal value of steps: `r si[which.max(si)]`.
 
 ## Imputing missing values
-Now let us return to an issue with missing values. We need to address this issue due to the know fact, that meassurements with missing values can bias the results, if not included in analysis. First of all let us figure out how many of them are in the dataset. Here is the total number of missing values of each variable
+Now let us return to an issue with missing values. We need to address this issue due to the know fact, that measurements with missing values can bias the results, if not included in analysis. First of all let us figure out how many of them are in the dataset. Here is the total number of missing values of each variable
 ```{r}
 colSums(is.na(DF))
 ```
 
-Only steps values are misiing. In order to fill in the missin values we will impute them. To do this we will do the following:
+Only steps values are missing. In order to fill in the mission values we will impute them. To do this we will do the following:
 
 * we determine date and time interval corresponding to a missing value
-* we find median of steps in that time interval accross all days in dataset
+* we find median of steps in that time interval across all days in dataset
 * we find median of steps in that day across all the time intervals
 * finally we take average of these two values
 ```{r}
@@ -98,13 +107,27 @@ Now we check if any missing values are still presented in our new dataset DFim. 
 colSums(is.na(DFim))
 ```
 
-But what about dependeces we made? Where they changed after we imputed the data?
+But what about dependence we made? Where they changed after we imputed the data?
 Now, let us consider how many steps were made in total on each day.
 ```{r}
 gSD <- ggplot(DF, aes(x = date, y = steps)) + stat_summary(fun.y="sum", geom="bar") + ggtitle("Missing values are NOT included.")
 gSDim <- ggplot(DFim, aes(x = date, y = steps)) + stat_summary(fun.y="sum", geom="bar") + ggtitle("Missing values are imputed.")
 require(gridExtra)
 grid.arrange(gSD, gSDim, ncol=1)
+```
+
+And now let us take a look on the distribution - let us make a histogram
+
+```{r}
+forHist <- aggregate(steps ~ date, FUN=sum, data=DF)
+gH <- ggplot(forHist, aes(x=steps)) + geom_histogram(binwidth=2500)
+
+forHistIm <- aggregate(steps ~ date, FUN=sum, data=DFim)
+gHim <- ggplot(forHist, aes(x=steps)) + geom_histogram(binwidth=2500)
+
+require(gridExtra)
+grid.arrange(gH, gHim, ncol=1)
+
 ```
 
 Les us also compare mean and median of total number of steps taken per day.
@@ -115,7 +138,7 @@ names(MeanMedian_Im) <- c("mean", "median")
 print(MeanMedian) # missing data are NOT included
 print(MeanMedian_Im) # missing data are imputed
 ```
-We see there is some difference between values and dependences obtained with and without imputation. Average value decreases more noticable comparing to median value.
+We see there is some difference between values and dependencies obtained with and without imputation. Average value decreases more noticeable comparing to median value.
 
 ## Are there differences in activity patterns between weekdays and weekends?
 Now, let us consider if there is a difference between activity during weekdays and weekends. 
